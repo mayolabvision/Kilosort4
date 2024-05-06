@@ -19,6 +19,12 @@ gui_deps = [
     'matplotlib'
 ]
 
+#gui_deps = [
+#    'pyqtgraph>=0.13.0',
+#    'qtpy',
+#    'matplotlib'
+#]
+
 docs_deps = [
     'sphinx>=3.0',
     'sphinxcontrib-apidoc',
@@ -38,7 +44,7 @@ try:
 except:
     pass
 
-### remove pyqt6 install if other qt backend installed
+## remove pyqt6 install if other qt backend installed
 try:
     import PyQt5
     gui_deps.remove("pyqt6")

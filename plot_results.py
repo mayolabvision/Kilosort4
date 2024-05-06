@@ -138,7 +138,6 @@ nc = 16 # number of channels to show
 good_units = np.nonzero(contam_pct <= 0.1)[0]
 mua_units = np.nonzero(contam_pct > 0.1)[0]
 
-
 gstr = ['good', 'mua']
 for j in range(2):
     print(f'~~~~~~~~~~~~~~ {gstr[j]} units ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
