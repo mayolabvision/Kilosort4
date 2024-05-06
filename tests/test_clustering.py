@@ -38,9 +38,9 @@ def random_np2(n_chans=384, n_shanks=4):
 
     return {'xc': xc[contact_indices], 'yc': yc[contact_indices]}
 
-
 class TestCenters:
     ops = {'dminx': 32}
+    __test__ = False
 
     def __init__(self, data_directory):
         # This is just here to make sure probes are downloaded before these
