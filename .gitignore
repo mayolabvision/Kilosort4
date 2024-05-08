@@ -135,6 +135,7 @@ dmypy.json
 tests/.test_data/
 tests/.test_data/*
 *.bin
+ex_results/
 
 # docs/ copy of README
 docs/README.md

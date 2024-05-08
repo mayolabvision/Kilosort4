@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 # NOTE: Be sure to update this filepath if you want the data downloaded to
 #       a specific location.
-SAVE_PATH = Path('ZFM-02370_mini.imec0.ap.bin')
+SAVE_PATH = Path('/ihome/pmayo/knoneman/Kilosort4/ex_results/ZFM-02370_mini.imec0.ap.bin')
 
 class DownloadProgressBar(tqdm):
     """ from https://stackoverflow.com/a/53877507 """
