@@ -12,7 +12,7 @@ if dat==0:
     SAVE_PATH = Path('/ihome/pmayo/knoneman/Kilosort4/ex_results/ZFM-02370_mini.imec0.ap.bin')
     #SAVE_PATH = Path('ZFM-02370_mini.imec0.ap.bin')
 elif dat==1:
-    SAVE_PATH = Path('/Users/kendranoneman/OneDrive_cmu/neuropixels/Ya_240415_s219_dirmem_withhelp_0003_g0_t0.imec0.ap.bin')
+    SAVE_PATH = Path('/ix1/pmayo/neuropixels/Ya_240415_s219_dirmem_withhelp_0003_g0_imec0/Ya_240415_s219_dirmem_withhelp_0003_g0_t0.imec0.ap.bin')
 
 class DownloadProgressBar(tqdm):
     """ from https://stackoverflow.com/a/53877507 """
@@ -47,7 +47,7 @@ if dat==0:
 
 elif dat==1:
     from kilosort.io import load_probe
-    probe = load_probe('/Users/kendranoneman/OneDrive_cmu/neuropixels/Ya_240415_s219_dirmem_withhelp_0003_g0_t0.imec0.ap_kilosortChanMap.mat')
+    probe = load_probe('/ix1/pmayo/neuropixels/Ya_240415_s219_dirmem_withhelp_0003_g0_imec0/Ya_240415_s219_dirmem_withhelp_0003_g0_t0.imec0.ap_kilosortChanMap.mat')
 
     settings = {'data_dir': SAVE_PATH.parent, 'n_chan_bin': 385, 'probe': probe}
 
