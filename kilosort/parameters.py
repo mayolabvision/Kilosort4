@@ -112,6 +112,34 @@ EXTRA_PARAMETERS = {
             """
     },
 
+    'shift': {
+        'gui_name': 'shift', 'type': float, 'min': -np.inf, 'max': np.inf,
+        'exclude': [], 'default': None, 'step': 'data',
+        'description':
+            """
+            Scalar shift to apply to data before all other operations. In most
+            cases this should be left as None, but may be necessary for float32
+            data for example. If needed, `shift` and `scale` should be set such
+            that data is roughly in the range -100 to +100.
+            
+            If set, data will be `data = data*scale + shift`.
+            """
+    },
+
+    'scale': {
+        'gui_name': 'scale', 'type': float, 'min': -np.inf, 'max': np.inf,
+        'exclude': [], 'default': None, 'step': 'data',
+        'description':
+            """
+            Scaling factor to apply to data before all other operations. In most
+            cases this should be left as None, but may be necessary for float32
+            data for example. If needed, `shift` and `scale` should be set such
+            that data is roughly in the range -100 to +100.
+            
+            If set, data will be `data = data*scale + shift`.
+            """
+    },
+
     ### PREPROCESSING
     'artifact_threshold': {
         'gui_name': 'artifact threshold', 'type': float, 'min': 0, 'max': np.inf,
@@ -142,6 +170,15 @@ EXTRA_PARAMETERS = {
             """
     },
 
+    'highpass_cutoff': {
+        'gui_name': 'highpass cutoff', 'type': float, 'min': 0, 'max': np.inf,
+        'exclude': [], 'default': 300, 'step': 'preprocessing',
+        'description':
+            """
+            Critical frequency for highpass Butterworth filter applied to data.
+            """
+    },
+
     'binning_depth': {
         'gui_name': 'binning_depth', 'type': float, 'min': 0, 'max': np.inf,
         'exclude': [0], 'default': 5, 'step': 'preprocessing',
@@ -157,8 +194,20 @@ EXTRA_PARAMETERS = {
         'exclude': [0], 'default': 20, 'step': 'preprocessing',
         'description':
             """
-            For drift correction, sigma for interpolation (spatial standard
-            deviation). Approximate smoothness scale in units of microns.
+            Approximate spatial smoothness scale in units of microns.
+            """
+    },
+
+    'drift_smoothing': {
+        'gui_name': 'drift smoothing', 'type': list, 'min': None, 'max': None,
+        'exclude': [], 'default': [0.5, 0.5, 0.5], 'step': 'preprocessing',
+        'description':
+            """
+            Amount of gaussian smoothing to apply to the spatiotemporal drift
+            estimation, for correlation, time (units of registration blocks),
+            and y (units of batches) axes. The y smoothing has no effect
+            for `nblocks = 1`. Adjusting smoothing for the correlation axis
+            is not recommended.
             """
     },
 
@@ -240,13 +289,23 @@ EXTRA_PARAMETERS = {
 
     'max_channel_distance': {
         'gui_name': 'max channel distance', 'type': float, 'min': 1,
-        'max': np.inf, 'exclude': [], 'default': None, 'step': 'spike detection',
+        'max': np.inf, 'exclude': [], 'default': 32, 'step': 'spike detection',
         'description':
             """
             Templates farther away than this from their nearest channel will
             not be used. Also limits distance between compared channels during
             clustering.
             """
+    },
+
+    'max_peels': {
+        'gui_name': 'max peels', 'type': int, 'min': 1, 'max': 10000, 'exclude': [],
+        'default': 100, 'step': 'spike detection',
+        'description':
+        """
+        Number of iterations to do over each batch of data in the matching
+        pursuit step. More iterations may detect more overlapping spikes.
+        """
     },
 
     'templates_from_data': {
@@ -321,15 +380,6 @@ EXTRA_PARAMETERS = {
             """
     },
 
-    'cluster_pcs': {
-        'gui_name': 'cluster pcs', 'type': int, 'min': 1, 'max': np.inf,
-        'exclude': [], 'default': 64, 'step': 'clustering',
-        'description':
-            """
-            Maximum number of spatiotemporal PC features used for clustering.
-            """
-    },
-
     'x_centers': {
         'gui_name': 'x centers', 'type': int, 'min': 1,
         'max': np.inf, 'exclude': [], 'default': None, 'step': 'clustering',
@@ -345,13 +395,29 @@ EXTRA_PARAMETERS = {
 
 
     ### POSTPROCESSING
-    'duplicate_spike_bins': {
-        'gui_name': 'duplicate spike bins', 'type': int, 'min': 0, 'max': np.inf,
-        'exclude': [], 'default': 7, 'step': 'postprocessing',
+    'duplicate_spike_ms': {
+        'gui_name': 'duplicate spike ms', 'type': float, 'min': 0, 'max': np.inf,
+        'exclude': [], 'default': 0.25, 'step': 'postprocessing',
         'description':
             """
-            Number of bins for which subsequent spikes from the same cluster are
+            Time in ms for which subsequent spikes from the same cluster are
             assumed to be artifacts. A value of 0 disables this step.
+
+            NOTE: this was formerly handled by `duplicate_spike_bins`, which has
+            been deprecated. The new default of 0.25ms is equivalent to the old
+            default of 7 bins for a 30kHz sampling rate.
+            """
+    },
+
+    'position_limit': {
+        'gui_name': 'position limit', 'type': float, 'min': 0, 'max': np.inf,
+        'exclude': [], 'default': 100, 'step': 'postprocessing',
+        'description':
+            """
+            Maximum distance (in microns) between channels that can be used
+            to estimate spike positions in `postprocessing.compute_spike_positions`.
+            This does not affect spike sorting, only how positions are estimated
+            after sorting is complete.
             """
     },
 }
@@ -376,3 +442,33 @@ main_defaults = {k: v['default'] for k, v in MAIN_PARAMETERS.items()}
 extra_defaults = {k: v['default'] for k, v in EXTRA_PARAMETERS.items()}
 # In the format expected by `run_kilosort`
 DEFAULT_SETTINGS = {**main_defaults, **extra_defaults}
+
+
+def compare_settings(settings):
+    """Find settings values that differ from the defaults.
+    
+    Parameters
+    ----------
+    settings : dict
+        Formatted the same as `DEFAULT_SETTINGS`.
+    
+    Returns
+    -------
+    modified_settings : dict
+        Formatted as above, but only contains keys with values that differ
+        from the defaults.
+    extra_keys : list
+        List of keys that appear in `settings` but not `DEFAULT_SETTINGS`.
+        These keys are *not* included in `modified_settings`.
+
+    """
+    modified_settings = {}
+    extra_keys = []
+
+    for k, v in settings.items():
+        if k in DEFAULT_SETTINGS:
+            if v != DEFAULT_SETTINGS[k]:
+                modified_settings[k] = v
+        else:
+            extra_keys.append(k)
+    return modified_settings, extra_keys

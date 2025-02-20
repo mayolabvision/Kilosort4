@@ -2,13 +2,14 @@ import setuptools
 from setuptools import setup
 
 install_deps = [
-    'numpy>=1.20.0',
+    'numpy>=1.20.0,<2.0.0',
     'scipy',
     'scikit-learn',
     'tqdm',
     'torch>=1.6',
     'numba',
     'faiss-cpu',
+    'psutil'
 ]
 
 gui_deps = [
