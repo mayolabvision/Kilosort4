@@ -11,25 +11,27 @@ from kilosort.gui import (
     DataConversionBox
 )
 from kilosort.gui.logger import setup_logger
-from kilosort.io import BinaryFiltered
+from kilosort.io import BinaryFiltered, remove_bad_channels
 from kilosort.utils import DOWNLOADS_DIR, download_probes
 from qtpy import QtCore, QtGui, QtWidgets
 
 logger = setup_logger(__name__)
 
 
-class KiloSortGUI(QtWidgets.QMainWindow):
-    def __init__(self, application, filename=None, device=None,
+class KilosortGUI(QtWidgets.QMainWindow):
+    def __init__(self, application, filename=None, reset=False, skip_load=False,
                  **kwargs):
-        super(KiloSortGUI, self).__init__(**kwargs)
+        super(KilosortGUI, self).__init__(**kwargs)
 
         self.app = application
         self.qt_settings = QtCore.QSettings('Janelia', 'Kilosort4')
-        if device is None:
-            if torch.cuda.is_available():
-                device = torch.device('cuda')
-            else:
-                device = torch.device('cpu')
+        if reset:
+            self.qt_settings.clear()
+
+        if torch.cuda.is_available():
+            device = torch.device('cuda')
+        else:
+            device = torch.device('cpu')
         self.device = device
 
         if filename is not None:
@@ -55,7 +57,11 @@ class KiloSortGUI(QtWidgets.QMainWindow):
 
         if self.qt_settings.contains('auto_load'):
             auto_load = self.qt_settings.value('auto_load')
-            if auto_load.lower() == 'false':
+            # Check for str and bool, seems like cache can store different types
+            # depending on Qt version or OS.
+            if isinstance(auto_load, str) and auto_load.lower() == 'false':
+                self.auto_load = False
+            elif isinstance(auto_load, bool) and auto_load is False:
                 self.auto_load = False
             else:
                 self.auto_load = True
@@ -64,7 +70,9 @@ class KiloSortGUI(QtWidgets.QMainWindow):
 
         if self.qt_settings.contains('show_plots'):
             show_plots = self.qt_settings.value('show_plots')
-            if show_plots.lower() == 'false':
+            if isinstance(show_plots, str) and show_plots.lower() == 'false':
+                self.show_plots = False
+            elif isinstance(show_plots, bool) and show_plots is False:
                 self.show_plots = False
             else:
                 self.show_plots = True
@@ -111,7 +119,7 @@ class KiloSortGUI(QtWidgets.QMainWindow):
         # sub-widgets.
         self.move(100, 100)
 
-        if self.auto_load:
+        if self.auto_load and not skip_load:
             self.settings_box.update_settings()
 
 
@@ -237,19 +245,25 @@ class KiloSortGUI(QtWidgets.QMainWindow):
             self.left_right_splitter.restoreState(
                 self.qt_settings.value('left_right_splitter')
                 )
+        else:
+            # Default to 25/75 split for left/right, 50/50 for settings/probe
+            # NOTE: The large values are used so that QT will divide the extra
+            #       pixels proportionally between the split widgets, which is
+            #       much simpler than figuring out the exact pixel positions.
+            self.left_right_splitter.setSizes([250000, 750000])
+            self.settings_probe_splitter.setSizes([500000, 500000])
 
         # Connect signals
         self.header_box.reset_gui_button.clicked.connect(self.reset_gui)
+        self.header_box.clear_cache_button.clicked.connect(self.clear_cache)
         self.settings_box.settingsUpdated.connect(self.load_data)
-        self.settings_box.previewProbe.connect(self.probe_view_box.preview_probe)
+        self.settings_box.previewProbe.connect(self.set_parameters)
+        self.settings_box.previewProbe.connect(self.probe_view_box.set_layout)
         # Don't allow spike sorting to run until new data has actually
         # been loaded.
         self.settings_box.dataChanged.connect(self.disable_run)
 
-        self.data_view_box.channelChanged.connect(self.probe_view_box.update_probe_view)
-        self.data_view_box.modeChanged.connect(
-            self.probe_view_box.synchronize_data_view_mode
-        )
+        self.data_view_box.channelChanged.connect(self.probe_view_box.set_layout)
         self.data_view_box.intervalUpdated.connect(self.load_data)
 
         self.run_box.updateContext.connect(self.update_context)
@@ -317,14 +331,19 @@ class KiloSortGUI(QtWidgets.QMainWindow):
 
     def set_parameters(self):
         settings = self.settings_box.settings
+        bad_channels = self.settings_box.bad_channels
 
         self.data_path = settings["data_file_path"]
         self.results_directory = settings["results_dir"]
-        self.probe_layout = settings["probe"]
+        self.probe_layout = remove_bad_channels(settings["probe"], bad_channels)
         self.probe_name = settings["probe_name"]
         self.num_channels = settings["n_chan_bin"]
 
         params = settings.copy()
+        params['save_preprocessed_copy'] = self.run_box.save_preproc_check.isChecked()
+        params['clear_cache'] = self.run_box.clear_cache_check.isChecked()
+        params['do_CAR'] = self.run_box.do_CAR_check.isChecked()
+        params['invert_sign'] = self.run_box.invert_sign_check.isChecked()
 
         assert params
 
@@ -350,6 +369,7 @@ class KiloSortGUI(QtWidgets.QMainWindow):
     def load_binary_files(self):
         n_channels = self.params["n_chan_bin"]
         sample_rate = self.params["fs"]
+        cutoff = self.params['highpass_cutoff']
         chan_map = self.probe_layout["chanMap"]
         xc = self.probe_layout["xc"]
         yc = self.probe_layout["yc"]
@@ -358,6 +378,8 @@ class KiloSortGUI(QtWidgets.QMainWindow):
         tmin = self.params['tmin']
         tmax = self.params['tmax']
         artifact = self.params['artifact_threshold']
+        shift = self.params['shift']
+        scale = self.params['scale']
 
         if chan_map.max() >= n_channels:
             raise ValueError(
@@ -375,6 +397,8 @@ class KiloSortGUI(QtWidgets.QMainWindow):
             tmin=tmin,
             tmax=tmax,
             artifact_threshold=artifact,
+            shift=shift,
+            scale=scale,
             file_object=self.file_object
         )
 
@@ -382,6 +406,7 @@ class KiloSortGUI(QtWidgets.QMainWindow):
 
         self.context.highpass_filter = preprocessing.get_highpass_filter(
             fs=sample_rate,
+            cutoff=cutoff,
             device=self.device
         )
 
@@ -396,6 +421,8 @@ class KiloSortGUI(QtWidgets.QMainWindow):
             tmin=tmin,
             tmax=tmax,
             artifact_threshold=artifact,
+            shift=shift,
+            scale=scale,
             file_object=self.file_object
         ) as bin_file:
             self.context.whitening_matrix = preprocessing.get_whitening_matrix(
@@ -417,6 +444,8 @@ class KiloSortGUI(QtWidgets.QMainWindow):
             tmin=tmin,
             tmax=tmax,
             artifact_threshold=artifact,
+            shift=shift,
+            scale=scale,
             file_object=self.file_object
         )
 
@@ -434,6 +463,7 @@ class KiloSortGUI(QtWidgets.QMainWindow):
         self.settings_box.use_file_object = True
         self.settings_box.data_file_path = Path(filename)
         self.settings_box.data_file_path_input.setText(filename)
+        self.settings_box.path_check = True
 
     def setup_data_view(self):
         self.data_view_box.setup_seek(self.context)
@@ -461,7 +491,7 @@ class KiloSortGUI(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def update_probe_view(self):
-        self.probe_view_box.set_layout(self.context)
+        self.probe_view_box.set_layout()
 
     def update_data_view(self):
         self.data_view_box.set_whitening_matrix(self.context.whitening_matrix)
@@ -523,6 +553,7 @@ class KiloSortGUI(QtWidgets.QMainWindow):
             if self.context.filt_binary_file is not None:
                 self.context.filt_binary_file.close()
 
+    @QtCore.Slot()
     def reset_gui(self):
         self.num_channels = None
         self.context = None
@@ -531,6 +562,10 @@ class KiloSortGUI(QtWidgets.QMainWindow):
         self.data_view_box.reset()
         self.settings_box.reset()
         self.message_log_box.reset()
+
+    @QtCore.Slot()
+    def clear_cache(self):
+        self.qt_settings.clear()
 
     def closeEvent(self, event: QtGui.QCloseEvent):
         # Make sure all threads and pop-out windows are closed as well.

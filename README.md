@@ -13,7 +13,7 @@
 [![GitHub forks](https://img.shields.io/github/forks/MouseLand/kilosort?style=social)](https://github.com/MouseLand/kilosort/)
 
 
-You can run Kilosort4 without installing it locally using google colab. An example colab notebook is available [here](https://colab.research.google.com/drive/1gFZa8TEBDXmg_CB5RwuT_52Apl3hP0Ie?usp=sharing). It will download some test data, run kilosort4 on it, and show some plots. Talk describing Kilosort4 is [here](https://www.youtube.com/watch?v=LTSmoACr918). 
+You can run Kilosort4 without installing it locally using google colab. An example colab notebook is available here: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/mouseland/kilosort/blob/main/docs/tutorials/kilosort4.ipynb). It will download some test data, run kilosort4 on it, and show some plots. Talk describing Kilosort4 is [here](https://www.youtube.com/watch?v=LTSmoACr918). 
 
 Example notebooks are provided in the `docs/source/tutorials` folder and in the [docs](https://kilosort.readthedocs.io/en/latest/tutorials/tutorials.html). The notebooks include: 
 
@@ -22,13 +22,15 @@ Example notebooks are provided in the `docs/source/tutorials` folder and in the 
   3. `make_probe`:  making a custom probe configuration.
 
 **If you use Kilosort1-4, please cite the [paper](https://www.nature.com/articles/s41592-024-02232-7):**     
-Pachitariu, M., Sridhar, S., Pennington, J., & Stringer, C. (2024). Spike sorting with Kilosort4.
+Pachitariu, M., Sridhar, S., Pennington, J., & Stringer, C. (2024). Spike sorting with Kilosort4. _Nature Methods_ , 21, pages 914–921
 
-**Note on multi-shank probes** : We are aware of some issues with sorting data from probes with multiple shanks or 2D arrays. See [documentation here](https://kilosort.readthedocs.io/en/latest/multi_shank.html) for recommended workarounds until the code is updated to handle these probes.
+**Reusing parameters from previous versions**: This probably will not work well. Kilosort4 is a new algorithm, and the main parameters (the thresholds) can affect the results in a different way for your data. Please start with the default parameters and adjust from there based on what you see in Phy. For descriptions of Kilosort4's parameters, you can mouse-over their names in the GUI or look at `kilosort.parameters.py`.
 
-**Note on reusing parameters from previous versions**: This probably will not work well. Kilosort4 is a new algorithm, and the main parameters (the thresholds) can affect the results in a different way for your data. Please start with the default parameters and adjust from there based on what you see in Phy. 
+**Running Kilosort4 with SpikeInterface**: We do not provide support for SpikeInterface, and are not involved in their development (or vise-versa). If you encounter problems running Kilosort4 through SpikeInterface, please try running Kilosort4 directly instead. In particular, the KS4 GUI is a useful tool for checking that your probe and data are formatted correctly.
 
 **Warning** :bangbang:: There were two bugs in Kilosort 2, 2.5 and 3 (but not 4) which caused fewer spikes to be detected in ~7ms periods at batch boundaries (every 2.1866s, issue #594). The patch1 releases fix these bugs, please use the new default NT and ntbuff parameters. 
+
+
 
 ## Installation
 
@@ -44,7 +46,7 @@ If you have an older `kilosort` environment you can remove it with `conda env re
 2. Open an anaconda prompt / command prompt which has `conda` for **python 3** in the path
 3. Create a new environment with `conda create --name kilosort python=3.9`. Python 3.10 should work as well.
 4. To activate this new environment, run `conda activate kilosort`
-5. To install kilosort and the GUI, run `python -m pip install kilosort[gui]`. If you're on a zsh server, you may need to use ' ' around the kilosort[gui] call: `python -m pip install 'kilosort[gui]'.
+5. To install kilosort and the GUI, run `python -m pip install kilosort[gui]`. If you're on a zsh server, you may need to use `python -m pip install "kilosort[gui]" `.
 6. Instead of 5, you can install the minimal version of kilosort with `python -m pip install kilosort`.  
 7. Next, if the CPU version of pytorch was installed (will happen on Windows), remove it with `pip uninstall torch`
 8. Then install the GPU version of pytorch `conda install pytorch pytorch-cuda=11.8 -c pytorch -c nvidia`
@@ -58,7 +60,7 @@ If step 8 does not work, you need to make sure the NVIDIA driver for your GPU is
 If pytorch installation still fails, follow the instructions [here](https://pytorch.org/get-started/locally/) to determine what version of pytorch to install. The Anaconda install is strongly recommended on Windows, and then choose the CUDA version that is supported by your GPU (newer GPUs may need newer CUDA versions > 10.2). For instance this command will install the 11.8 version on Linux and Windows (note the `torchvision` and `torchaudio` commands are removed because kilosort doesn't require them):
 
 ``
-conda install pytorch pytorch-cuda=11.8 -c pytorch -c nvidia
+conda install pytorch pytorch-cuda=11.8 pynvml -c pytorch -c nvidia
 ``
 
 This [video](https://www.youtube.com/watch?v=gsixIQYvj3U) has step-by-step installation instructions for NVIDIA drivers and pytorch in Windows (ignore the environment creation step with the .yml file, we have an environment already, to activate it use `conda activate kilosort`).
@@ -100,18 +102,12 @@ phy template-gui params.py
 
 ## Developer instructions
 
-To get the most up-to-date changes to the code, clone the repository and install in editable mode in your Kilosort environment, along with the other installation steps mentioned above.
+To get the most up-to-date changes to the code, clone the repository and install in editable mode in your Kilosort environment, along with the other installation steps mentioned above. Using the included `environment.yml` to create your environment is recommended, which will also install pytest and the cuda version of Pytorch.
 ~~~
 git clone git@github.com:MouseLand/Kilosort.git
+conda env create -f environment.yml
 conda activate kilosort
 pip install -e Kilosort[gui]
-pip uninstall torch
-conda install pytorch pytorch-cuda=11.8 -c pytorch -c nvidia
-~~~
-
-For unit testing, you will need to install pytest
-~~~
-pip install pytest
 ~~~
 
 Then run all tests with:

@@ -32,14 +32,22 @@ def remove_duplicates(spike_times, spike_clusters, dt=15):
 
 def compute_spike_positions(st, tF, ops):
     '''Get x,y positions of spikes relative to probe.'''
+    # Determine channel weightings for nearest channels
+    # based on norm of PC features. Channels that are far away have 0 weight,
+    # determined by `ops['settings']['position_limit']`.
     tmass = (tF**2).sum(-1)
+    tmask = ops['iCC_mask'][:, ops['iU'][st[:,1]]].T.to(tmass.device)
+    tmass = tmass * tmask
     tmass = tmass / tmass.sum(1, keepdim=True)
+
+    # Get x,y coordinates of nearest channels.
     xc = torch.from_numpy(ops['xc']).to(tmass.device)
     yc = torch.from_numpy(ops['yc']).to(tmass.device)
     chs = ops['iCC'][:, ops['iU'][st[:,1]]].cpu()
     xc0 = xc[chs.T]
     yc0 = yc[chs.T]
 
+    # Estimate spike positions as weighted sum of coordinates of nearby channels.
     xs = (xc0 * tmass).sum(1).cpu().numpy()
     ys = (yc0 * tmass).sum(1).cpu().numpy()
 
@@ -81,6 +89,7 @@ def make_pc_features(ops, spike_templates, spike_clusters, tF):
 
     # xy: template centers, iC: channels associated with each template
     xy, iC = xy_templates(ops)
+    n_templates = iC.shape[1]
     n_clusters = np.unique(spike_clusters).size
     n_chans = ops['nearest_chans']
     feature_ind = np.zeros((n_clusters, n_chans), dtype=np.uint32)
@@ -89,7 +98,7 @@ def make_pc_features(ops, spike_templates, spike_clusters, tF):
         # Get templates associated with cluster (often just 1)
         iunq = np.unique(spike_templates[spike_clusters==i]).astype(int)
         # Get boolean mask with size (n_templates,), True if they match cluster
-        ix = torch.from_numpy(np.zeros(int(spike_templates.max())+1, bool))
+        ix = torch.from_numpy(np.zeros(n_templates, bool))
         ix[iunq] = True
         # Get PC features for all spikes detected with those templates (Xd),
         # and the indices in tF where those spikes occur (igood).

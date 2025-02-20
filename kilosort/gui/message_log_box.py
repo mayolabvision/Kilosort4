@@ -3,6 +3,7 @@ import pprint
 
 import numpy as np
 from kilosort.gui.logger import XStream
+from kilosort.utils import probe_as_string
 from qtpy import QtCore, QtGui, QtWidgets
 
 
@@ -58,7 +59,7 @@ class MessageLogBox(QtWidgets.QGroupBox):
         # values and the values that are actually being used.
         settings_text = "settings = "
         settings = self.gui.settings_box.settings.copy()
-        settings['probe'] = '... (use dump probe)'
+        settings['probe'] = '... (use print probe)'
         s = pprint.pformat(settings, indent=4, sort_dicts=False)
         settings_text += s[0] + '\n ' + s[1:-1] + '\n' + s[-1]
 
@@ -66,23 +67,8 @@ class MessageLogBox(QtWidgets.QGroupBox):
 
     @QtCore.Slot()
     def print_probe(self):
-        # For debugging purposes, make sure probe is loaded correctly.
-        probe_text = "probe = "
         probe = self.gui.settings_box.settings['probe']
-        
-        # Set numpy to print full arrays
-        opt = np.get_printoptions()
-        np.set_printoptions(threshold=np.inf)
-        
-        p = pprint.pformat(probe, indent=4, sort_dicts=False)
-        # insert `np.` so that text can be copied directly to code
-        p = 'np.array'.join(p.split('array'))
-        p = 'dtype=np.'.join(p.split('dtype='))
-        probe_text += p[0] + '\n ' + p[1:-1] + '\n' + p[-1]
-
-        # Revert numpy settings
-        np.set_printoptions(**opt)
-
+        probe_text = probe_as_string(probe)
         self.update_text(probe_text)
 
     def prepare_for_new_context(self):
