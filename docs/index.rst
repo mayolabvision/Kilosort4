@@ -14,7 +14,6 @@ please see our pre-print on `BioArxiv <https://www.biorxiv.org/content/10.1101/2
    README <README.md>
    gui_guide
    parameters
-   multi_shank
    hardware
    drift
 
@@ -23,6 +22,12 @@ please see our pre-print on `BioArxiv <https://www.biorxiv.org/content/10.1101/2
    :caption: Tutorials
 
    tutorials/tutorials
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Other Resources
+   
+   Kilosort Video Lecture, 2023 <https://www.youtube.com/watch?v=LTSmoACr918>
 
 
 ..

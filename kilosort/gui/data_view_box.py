@@ -9,7 +9,6 @@ logger = setup_logger(__name__)
 
 class DataViewBox(QtWidgets.QGroupBox):
     channelChanged = QtCore.Signal(int, int)
-    modeChanged = QtCore.Signal(str, int)
     updateContext = QtCore.Signal(object)
     intervalUpdated = QtCore.Signal()
 
@@ -559,8 +558,9 @@ class DataViewBox(QtWidgets.QGroupBox):
     ):
 
         if self.raw_button.isChecked():
-            colormap_min, colormap_max = -32.0, 32.0
             raw_traces = binary_file[start_time:end_time].cpu().numpy()
+            colormap_min = np.percentile(raw_traces, 0.5)
+            colormap_max = np.percentile(raw_traces, 99.5)
             self.add_image_to_plot(
                 raw_traces[to_display, :].T,
                 colormap_min,
@@ -569,7 +569,6 @@ class DataViewBox(QtWidgets.QGroupBox):
 
         elif self.whitened_button.isChecked():
             whitened_traces = filt_binary_file[start_time:end_time].cpu().numpy()
-
             colormap_min, colormap_max = -4.0, 4.0
             self.add_image_to_plot(
                 whitened_traces[to_display, :].T,
