@@ -4,7 +4,7 @@ from pathlib import Path
 
 # outputs saved to results_dir
 #results_dir = Path(settings['data_dir']).joinpath('kilosort4')
-results_dir = Path('kilosort4')
+results_dir = Path('/Users/kendranoneman/Projects/mayo/kilo_results/kilosort4')
 ops = np.load(results_dir / 'ops.npy', allow_pickle=True).item()
 camps = pd.read_csv(results_dir / 'cluster_Amplitude.tsv', sep='\t')['Amplitude'].values
 contam_pct = pd.read_csv(results_dir / 'cluster_ContamPct.tsv', sep='\t')['ContamPct'].values
