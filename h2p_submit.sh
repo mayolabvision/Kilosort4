@@ -12,9 +12,11 @@
 #SBATCH --time=0-23:59:59
 
 module purge
-module load python/ondemand-jupyter-python3.10
 conda activate /ihome/pmayo/knoneman/.conda/envs/kilosort
 
-python MAIN.py
+SAVE_PATH="/ix1/pmayo/OneDrive/DATA/${1}_${2}_${3}/${1}_${2}_${3}.bin"
+
+# Run the KILOSORT function
+python -c "from KILOSORT import KILOSORT; KILOSORT('${SAVE_PATH}')"
 
 echo "DONE"
