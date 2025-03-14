@@ -6,7 +6,7 @@ import numpy as np
 from kilosort import run_kilosort, DEFAULT_SETTINGS
 from kilosort.io import save_preprocessing, load_ops
 
-def KILOSORT(save_path):
+def kilosort_h2p(save_path):
     SAVE_PATH = Path(save_path)
 
     n_chan = 24
