@@ -36,6 +36,6 @@ echo "PROBE_PATH = $PROBE_PATH"
 # Run the KILOSORT_H2P function from the imported file
 python -c "import sys; sys.path.append('/ihome/pmayo/knoneman/Packages/Kilosort4'); from KILOSORT_H2P import kilosort_h2p; kilosort_h2p('$SAVE_PATH', '$PROBE_PATH', run_ks=True, temp_wh=False)"
 
-python -c "import sys; sys.path.append('/ihome/pmayo/knoneman/Packages/Kilosort4'); from KILOSORT_H2P import kilosort_h2p; kilosort_h2p('$SAVE_PATH', '$PROBE_PATH', run_ks=False, temp_wh=True)"
+#python -c "import sys; sys.path.append('/ihome/pmayo/knoneman/Packages/Kilosort4'); from KILOSORT_H2P import kilosort_h2p; kilosort_h2p('$SAVE_PATH', '$PROBE_PATH', run_ks=False, temp_wh=True)"
 
 echo "DONE"
