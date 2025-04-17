@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH --nodes=1
 #SBATCH --time=0-09:00:00
-#SBATCH --ntasks-per-node=2
+#SBATCH --ntasks-per-node=4
 #SBATCH --gres=gpu:2
 #SBATCH --cluster=gpu
 #SBATCH --partition=a100
@@ -16,7 +16,7 @@
 module purge
 conda activate /ihome/pmayo/knoneman/.conda/envs/kilosort
 
-SAVE_PATH="/ix1/pmayo/lab_NHPdata/${1}/${1}_imec${2}/${1}_t0.imec${2}_DREDGE.ap.bin"
+SAVE_PATH="/ix1/pmayo/lab_NHPdata/${1}/${1}_imec${2}/${1}_t0.imec${2}.ap.bin"
 PROBE_PATH="/ix1/pmayo/lab_NHPdata/${1}/${1}_imec${2}/${1}_t0.imec${2}.ap_kilosortChanMap.mat"
 KILO4_PATH="/ix1/pmayo/lab_NHPdata/${1}/${1}_imec${2}/kilosort4"
 

@@ -22,9 +22,9 @@ def kilosort_h2p(save_path,probe_path,run_ks=True,temp_wh=True):
         #settings['nskip']
 
         #settings['batch_size'] = 60000*2 # 60000
-        #settings['nblocks'] = 0 # 1
-        #settings['Th_universal'] = 8 # 9
-        #settings['Th_learned'] = 8   # 8
+        #settings['nblocks'] = 1 # 1
+        #settings['Th_universal'] = 9 # 9
+        #settings['Th_learned'] = 7   # 8
 
         #settings['min_template_size'] = 10 #10
         #settings['nearest_templates'] = 23 # 100
