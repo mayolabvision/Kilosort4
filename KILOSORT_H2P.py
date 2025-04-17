@@ -6,9 +6,13 @@ import numpy as np
 from kilosort import run_kilosort, DEFAULT_SETTINGS
 from kilosort.io import load_probe, save_preprocessing, load_ops
 
-def kilosort_h2p(save_path,probe_path,run_ks=True,temp_wh=True):
-    SAVE_PATH = Path(save_path)
-    PROBE_PATH = Path(probe_path)
+def kilosort_h2p(save_path,probe_path,run_ks=True,temp_wh=True,corrected=False):
+    if corrected:
+        SAVE_PATH = Path(save_path).parent / 'corrected' / 'traces_cached_seg0.raw'
+        PROBE_PATH = Path(probe_path).parent / 'corrected' / 'probe.prb'
+    else:
+        SAVE_PATH = Path(save_path)
+        PROBE_PATH = Path(probe_path)
 
     if run_ks:
         probe = load_probe(PROBE_PATH)
