@@ -16,9 +16,19 @@
 module purge
 conda activate /ihome/pmayo/knoneman/.conda/envs/kilosort
 
-SAVE_PATH="/ix1/pmayo/lab_NHPdata/${1}/${1}_imec${2}/${1}_t0.imec${2}.ap.bin"
-PROBE_PATH="/ix1/pmayo/lab_NHPdata/${1}/${1}_imec${2}/${1}_t0.imec${2}.ap_kilosortChanMap.mat"
-KILO4_PATH="/ix1/pmayo/lab_NHPdata/${1}/${1}_imec${2}/kilosort4"
+DRIFT_PRESET="dredge"
+: "${3:=0}"
+
+if [ "$3" -eq 0 ]; then
+    SAVE_PATH="/ix1/pmayo/lab_NHPdata/${1}/${1}_imec${2}/${1}_t0.imec${2}.ap.bin"
+    PROBE_PATH="/ix1/pmayo/lab_NHPdata/${1}/${1}_imec${2}/${1}_t0.imec${2}.ap_kilosortChanMap.mat"
+elif [ "$3" -eq 1 ]; then
+    SAVE_PATH="/ix1/pmayo/lab_NHPdata/${1}/${1}_imec${2}/$DRIFT_PRESET/traces_cached_seg0.raw"
+    PROBE_PATH="/ix1/pmayo/lab_NHPdata/${1}/${1}_imec${2}/$DRIFT_PRESET/probe.prb"
+else
+    echo "Error: Invalid value '$3'. Must be 0 or 1."
+    exit 1
+fi
 
 echo "SAVE_PATH = $SAVE_PATH"
 echo "PROBE_PATH = $PROBE_PATH"

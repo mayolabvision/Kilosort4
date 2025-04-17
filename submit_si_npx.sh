@@ -17,9 +17,13 @@ module purge
 conda activate /ihome/pmayo/knoneman/.conda/envs/kilosort
 
 SPIKEGLX_PATH="/ix1/pmayo/lab_NHPdata/${1}"
+IMEC=${2}
+DRIFT_PRESET="dredge"
+PLOT_FIGS=False
+
 echo "SPIKEGLX_PATH= $SPIKEGLX_PATH"
 
 # Run the SI_H2P function from the imported file
-python -c "import sys; sys.path.append('/ihome/pmayo/knoneman/Packages/Kilosort4'); from SI_H2P import si_h2p; si_h2p('$SPIKEGLX_PATH', IMEC=${2})"
+python -c "import sys; sys.path.append('/ihome/pmayo/knoneman/Packages/Kilosort4'); from SI_H2P import si_h2p; si_h2p('$SPIKEGLX_PATH', IMEC=int('$IMEC'), drift_preset='$DRIFT_PRESET', plot_figs=('$PLOT_FIGS' == 'True'))"
 
 echo "DONE"
