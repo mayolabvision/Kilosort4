@@ -6,14 +6,18 @@ import numpy as np
 from kilosort import run_kilosort, DEFAULT_SETTINGS
 from kilosort.io import load_probe, save_preprocessing, load_ops
 
-def kilosort_h2p(save_path,probe_path,run_ks=True,temp_wh=True):
+def kilosort_h2p(save_path,probe_path,nblocks=0,run_ks=True,temp_wh=True):
 
+    SAVE_PATH = Path(save_path)
+    PROBE_PATH = Path(probe_path)
+    
     if run_ks:
-        probe = load_probe(PROBE_PATH)
+        probe = load_probe(probe_path)
 
         settings = DEFAULT_SETTINGS
         settings['probe'] = probe
-        settings['nblocks'] = 0
+        settings['nblocks'] = nblocks
+    
         settings['n_chan_bin'] = probe['n_chan']+1
         settings['fs'] = 30000
         settings['data_dir'] = SAVE_PATH.parent

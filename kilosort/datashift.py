@@ -7,7 +7,7 @@ from scipy.ndimage import gaussian_filter
 import torch
 
 from kilosort import spikedetect
-
+import medicine
 
 def bin_spikes(ops, st):
     """ for each batch, the spikes in that batch are binned to a 2D matrix by amplitude and depth
@@ -184,6 +184,44 @@ def kernel2D(x, y, sig = 1):
     return Kn
 
 def run(ops, bfile, device=torch.device('cuda'), progress_bar=None,
+        clear_cache=False):
+    
+    if ops['nblocks']<1:
+        ops['dshift'] = None 
+        logger.info('nblocks = 0, skipping drift correction')
+        return ops, None
+
+    # Extract spikes
+    st, _, ops  = spikedetect.run(
+        ops, bfile, device=device, progress_bar=progress_bar,
+        clear_cache=clear_cache,
+    )
+
+    # Run MEDiCINe to estimate motion
+    medicine_output_dir = ops['data_dir'] / 'medicine_output'
+    medicine.run_medicine(
+        peak_amplitudes=st[:, 2],
+        peak_depths=st[:, 1],
+        peak_times=st[:, 0],
+        output_dir=medicine_output_dir,
+        training_steps=2000,
+    )
+    motion = np.mean(np.load(medicine_output_dir / 'motion.npy'), axis=1)
+    dshift_indices = np.linspace(0, len(motion), ops['Nbatches'] + 1)
+    dshift_indices = np.floor(dshift_indices).astype(int)[:-1]
+    dshift = motion[dshift_indices]
+
+    # Continue Kilosort processing
+    ops['yblk'] = np.array([-1])
+    ops['dshift'] = dshift
+    xp = np.vstack((ops['xc'],ops['yc'])).T
+    Kxx = torch.from_numpy(kernel2D(xp, xp, ops['sig_interp']))
+    iKxx = torch.linalg.inv(Kxx + 0.01 * torch.eye(Kxx.shape[0]))
+    ops['iKxx'] = iKxx.to(device)
+
+    return ops, st
+
+def run_old(ops, bfile, device=torch.device('cuda'), progress_bar=None,
         clear_cache=False):
     """ this step computes a drift correction model
     it returns vertical correction amplitudes for each batch, and for multiple blocks in a batch if nblocks > 1. 
