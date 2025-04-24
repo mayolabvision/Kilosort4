@@ -183,7 +183,7 @@ def kernel2D(x, y, sig = 1):
     Kn = np.exp(-ds / (2*sig**2))
     return Kn
 
-def run(ops, bfile, device=torch.device('cuda'), progress_bar=None,
+def run_medicine(ops, bfile, device=torch.device('cuda'), progress_bar=None,
         clear_cache=False):
     
     if ops['nblocks']<1:
@@ -221,7 +221,7 @@ def run(ops, bfile, device=torch.device('cuda'), progress_bar=None,
 
     return ops, st
 
-def run_old(ops, bfile, device=torch.device('cuda'), progress_bar=None,
+def run(ops, bfile, device=torch.device('cuda'), progress_bar=None,
         clear_cache=False):
     """ this step computes a drift correction model
     it returns vertical correction amplitudes for each batch, and for multiple blocks in a batch if nblocks > 1. 

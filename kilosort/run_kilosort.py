@@ -39,7 +39,7 @@ def run_kilosort(settings, probe=None, probe_name=None, filename=None,
                  data_dtype=None, do_CAR=True, invert_sign=False, device=None,
                  progress_bar=None, save_extra_vars=False, clear_cache=False,
                  save_preprocessed_copy=False, bad_channels=None,
-                 verbose_console=False):
+                 verbose_console=False, drift_correction_type='kilosort'):
     """Run full spike sorting pipeline on specified data.
     
     Parameters
@@ -228,6 +228,7 @@ def run_kilosort(settings, probe=None, probe_name=None, filename=None,
         ops, bfile, st0 = compute_drift_correction(
             ops, device, tic0=tic0, progress_bar=progress_bar,
             file_object=file_object, clear_cache=clear_cache,
+            drift_correction_type=drift_correction_type
             )
 
         # Check scale of data for log file
@@ -527,7 +528,7 @@ def compute_preprocessing(ops, device, tic0=np.nan, file_object=None):
 
 
 def compute_drift_correction(ops, device, tic0=np.nan, progress_bar=None,
-                             file_object=None, clear_cache=False):
+                             file_object=None, clear_cache=False, drift_correction_type='kilosort'):
     """Compute drift correction parameters and save them to `ops`.
 
     Parameters
@@ -575,8 +576,14 @@ def compute_drift_correction(ops, device, tic0=np.nan, progress_bar=None,
         file_object=file_object
         )
 
-    ops, st = datashift.run(ops, bfile, device=device, progress_bar=progress_bar,
-                            clear_cache=clear_cache)
+    if drift_correction_type == 'kilosort':
+        ops, st = datashift.run(ops, bfile, device=device, progress_bar=progress_bar,
+                                clear_cache=clear_cache)
+    elif:
+        ops, st = datashift.run_medicine(ops, bfile, device=device, progress_bar=progress_bar,
+                                clear_cache=clear_cache)
+
+
     bfile.close()
     logger.info(f'drift computed in {time.time()-tic : .2f}s; ' + 
                 f'total {time.time()-tic0 : .2f}s')
