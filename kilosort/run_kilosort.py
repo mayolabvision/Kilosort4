@@ -39,7 +39,8 @@ def run_kilosort(settings, probe=None, probe_name=None, filename=None,
                  data_dtype=None, do_CAR=True, invert_sign=False, device=None,
                  progress_bar=None, save_extra_vars=False, clear_cache=False,
                  save_preprocessed_copy=False, bad_channels=None,
-                 verbose_console=False, drift_correction_type='kilosort'):
+                 verbose_console=False, drift_correction_type='none', with_whitening=False,
+                 stop_after_motion=True):
     """Run full spike sorting pipeline on specified data.
     
     Parameters
@@ -228,7 +229,8 @@ def run_kilosort(settings, probe=None, probe_name=None, filename=None,
         ops, bfile, st0 = compute_drift_correction(
             ops, device, tic0=tic0, progress_bar=progress_bar,
             file_object=file_object, clear_cache=clear_cache,
-            drift_correction_type=drift_correction_type
+            drift_correction_type=drift_correction_type, 
+            with_whitening=with_whitening
             )
 
         # Check scale of data for log file
@@ -489,7 +491,7 @@ def compute_preprocessing(ops, device, tic0=np.nan, file_object=None):
         xc, yc, tmin, tmax, artifact, shift, scale = get_run_parameters(ops)
     nskip = ops['settings']['nskip']
     whitening_range = ops['settings']['whitening_range']
-    
+ 
     # Compute high pass filter
     cutoff = ops['settings']['highpass_cutoff']
     hp_filter = preprocessing.get_highpass_filter(fs, cutoff, device=device)
@@ -528,7 +530,9 @@ def compute_preprocessing(ops, device, tic0=np.nan, file_object=None):
 
 
 def compute_drift_correction(ops, device, tic0=np.nan, progress_bar=None,
-                             file_object=None, clear_cache=False, drift_correction_type='kilosort'):
+                             file_object=None, clear_cache=False, 
+                             drift_correction_type='kilosort', with_whitening=False,
+                             stop_after_motion=True):
     """Compute drift correction parameters and save them to `ops`.
 
     Parameters
@@ -568,21 +572,34 @@ def compute_drift_correction(ops, device, tic0=np.nan, progress_bar=None,
     hp_filter = ops['preprocessing']['hp_filter']
     whiten_mat = ops['preprocessing']['whiten_mat']
 
-    bfile = io.BinaryFiltered(
-        ops['filename'], n_chan_bin, fs, NT, nt, twav_min, chan_map, 
-        hp_filter=hp_filter, whiten_mat=whiten_mat, device=device, do_CAR=do_CAR,
-        invert_sign=invert, dtype=dtype, tmin=tmin, tmax=tmax,
-        artifact_threshold=artifact, shift=shift, scale=scale,
-        file_object=file_object
-        )
+    if with_whitening:
+        bfile = io.BinaryFiltered(
+            ops['filename'], n_chan_bin, fs, NT, nt, twav_min, chan_map, 
+            hp_filter=hp_filter, whiten_mat=whiten_mat, device=device, do_CAR=do_CAR,
+            invert_sign=invert, dtype=dtype, tmin=tmin, tmax=tmax,
+            artifact_threshold=artifact, shift=shift, scale=scale,
+            file_object=file_object
+            )
+    else:
+        logger.info('NO WHITENING.')
+        bfile = io.BinaryFiltered(
+            ops['filename'], n_chan_bin, fs, NT, nt, twav_min, chan_map, 
+            hp_filter=hp_filter, whiten_mat=None, device=device, do_CAR=do_CAR,
+            invert_sign=invert, dtype=dtype, tmin=tmin, tmax=tmax,
+            artifact_threshold=artifact, shift=shift, scale=scale,
+            file_object=file_object
+            )
 
-    if drift_correction_type == 'kilosort':
+
+    if drift_correction_type == 'kilosort' or drift_correction_type == 'none':
         ops, st = datashift.run(ops, bfile, device=device, progress_bar=progress_bar,
                                 clear_cache=clear_cache)
-    elif:
+    else:
         ops, st = datashift.run_medicine(ops, bfile, device=device, progress_bar=progress_bar,
                                 clear_cache=clear_cache)
-
+        if stop_after_motion:
+            print("Stopping after motion correction as requested (stop_after_motion=True).")
+            sys.exit()
 
     bfile.close()
     logger.info(f'drift computed in {time.time()-tic : .2f}s; ' + 
@@ -594,13 +611,24 @@ def compute_drift_correction(ops, device, tic0=np.nan, progress_bar=None,
         logger.debug(f'iKxx shape: {ops["iKxx"].shape}')
     
     # binary file with drift correction
-    bfile = io.BinaryFiltered(
-        ops['filename'], n_chan_bin, fs, NT, nt, twav_min, chan_map, 
-        hp_filter=hp_filter, whiten_mat=whiten_mat, device=device,
-        dshift=ops['dshift'], do_CAR=do_CAR, dtype=dtype, tmin=tmin, tmax=tmax,
-        artifact_threshold=artifact, shift=shift, scale=scale,
-        file_object=file_object
-        )
+    if with_whitening:
+        bfile = io.BinaryFiltered(
+            ops['filename'], n_chan_bin, fs, NT, nt, twav_min, chan_map, 
+            hp_filter=hp_filter, whiten_mat=whiten_mat, device=device,
+            dshift=ops['dshift'], do_CAR=do_CAR, dtype=dtype, tmin=tmin, tmax=tmax,
+            artifact_threshold=artifact, shift=shift, scale=scale,
+            file_object=file_object
+            )
+    else:
+        logger.info('NO WHITENING.')
+        bfile = io.BinaryFiltered(
+            ops['filename'], n_chan_bin, fs, NT, nt, twav_min, chan_map, 
+            hp_filter=hp_filter, whiten_mat=None, device=device,
+            dshift=ops['dshift'], do_CAR=do_CAR, dtype=dtype, tmin=tmin, tmax=tmax,
+            artifact_threshold=artifact, shift=shift, scale=scale,
+            file_object=file_object
+            )
+
 
     log_performance(logger, 'info', 'Resource usage after drift correction')
     log_cuda_details(logger)

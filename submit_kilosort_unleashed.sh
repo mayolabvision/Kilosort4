@@ -22,11 +22,9 @@ export NUMEXPR_MAX_THREADS=$SLURM_CPUS_PER_TASK
 
 SESSION="$1"
 IMEC="${2:-0}"
-DRIFT_CORRECT_TYPE="${3:-None}"
 
 echo "SESSION: $SESSION"
 echo "IMEC: $IMEC"
-echo "N_BLOCKS: $N_BLOCKS"
 
 ##########################
 
@@ -36,8 +34,16 @@ PROBE_PATH="/ix1/pmayo/lab_NHPdata/${SESSION}/${SESSION}_imec${IMEC}/${SESSION}_
 echo "SAVE_PATH = $SAVE_PATH"
 echo "PROBE_PATH = $PROBE_PATH"
 
-# Run the KILOSORT_H2P function with nblocks from input
-python -c "import sys; sys.path.append('/ihome/pmayo/knoneman/Packages/Kilosort4'); from KILOSORT_H2P import kilosort_h2p; kilosort_h2p('$SAVE_PATH', '$PROBE_PATH', nblocks=$N_BLOCKS, drift_correction_type='$DRIFT_CORRECT_TYPE')"
+RUN_TYPE="unleashed"
+echo "RUN_TYPE: $RUN_TYPE"
+python -c "import sys; sys.path.append('/ihome/pmayo/knoneman/Packages/Kilosort4'); from KILOSORT_H2P import kilosort_h2p; kilosort_h2p('$SAVE_PATH', '$PROBE_PATH', run_type='$RUN_TYPE')"
+
+RUN_TYPE="detect_motion"
+echo "RUN_TYPE: $RUN_TYPE"
+python -c "import sys; sys.path.append('/ihome/pmayo/knoneman/Packages/Kilosort4'); from KILOSORT_H2P import kilosort_h2p; kilosort_h2p('$SAVE_PATH', '$PROBE_PATH', run_type='$RUN_TYPE')"
+
+OUT_PATH="/ix1/pmayo/lab_NHPdata/${SESSION}/${SESSION}_imec${IMEC}/kilosort4_unleashed"
+python -c "import sys; sys.path.append('/ihome/pmayo/knoneman/Packages/Kilosort4'); from make_cluster_summary_table import make_cluster_summary_table; make_cluster_summary_table('$OUT_PATH')"
 
 echo "DONE"
 
