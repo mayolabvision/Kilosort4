@@ -30,6 +30,11 @@ def mean_waveform(cluster_id, results_dir, n_spikes=np.inf, bfile=None, best=Tru
     mean_wave : np.ndarray
         Mean waveform with shape (nt,) if `best = True`, or shape (n_chans,nt)
         otherwise.
+    spike_subset : np.ndarray
+        Indices for randomly selected spikes, relative to the list of spike
+        times assigned to this cluster. In other words, `spike_subset = [0,1,2]`
+        would indicate that the first, second and third spikes from this cluster
+        were used (in ascending order of spike time).
     
     """
     results_dir = Path(results_dir)
@@ -38,12 +43,65 @@ def mean_waveform(cluster_id, results_dir, n_spikes=np.inf, bfile=None, best=Tru
     else:
         chan = None
 
-    spikes = get_cluster_spikes(cluster_id, results_dir, n_spikes=n_spikes)
-    waves = get_spike_waveforms(spikes, results_dir, chan=chan)
+    spike_times, spike_subset = get_cluster_spikes(cluster_id, results_dir,
+                                                   n_spikes=n_spikes)
+    waves = get_spike_waveforms(spike_times, results_dir, bfile=bfile, chan=chan)
     mean_wave = waves.mean(axis=-1)
 
-    return mean_wave
+    return mean_wave, spike_subset
 
+def mean_waveform_with_bounds(cluster_id, results_dir, n_spikes=np.inf, bfile=None, best=True, error_type='std'):
+    """Compute mean waveform and error bounds (SEM or STD) for a given cluster.
+
+    Parameters
+    ----------
+    cluster_id : int
+        Cluster index to reference from `spike_clusters.npy` in the results directory.
+    results_dir : str or Path
+        Path to directory where Kilosort4 sorting results were saved.
+    n_spikes : int; default=np.inf
+        Number of spikes to use for computing mean. All if np.inf.
+    bfile : kilosort.io.BinaryFiltered; optional
+        Kilosort4 data file object. Loaded from ops.npy if not provided.
+    best : bool; default=True
+        If True, return waveform for best channel. Otherwise, return multi-channel.
+    error_type : str; default='std'
+        Type of error to compute for bounds. Options: 'std' or 'sem'.
+
+    Returns
+    -------
+    mean_wave : np.ndarray
+        Mean waveform, shape (nt,) if best=True else (n_chans, nt)
+    lower_bound : np.ndarray
+        Mean - error at each timepoint, same shape as mean_wave.
+    upper_bound : np.ndarray
+        Mean + error at each timepoint, same shape as mean_wave.
+    spike_subset : np.ndarray
+        Indices of randomly selected spikes used to compute mean.
+    """
+    results_dir = Path(results_dir)
+    if best:
+        chan = get_best_channels(results_dir)[cluster_id]
+    else:
+        chan = None
+
+    spike_times, spike_subset = get_cluster_spikes(cluster_id, results_dir,
+                                                   n_spikes=n_spikes)
+    waves = get_spike_waveforms(spike_times, results_dir, bfile=bfile, chan=chan)
+
+    mean_wave = waves.mean(axis=-1)
+
+    if error_type == 'sem':
+        error = waves.std(axis=-1, ddof=1) / np.sqrt(waves.shape[-1])
+    elif error_type == 'std':
+        error = waves.std(axis=-1, ddof=1)
+    else:
+        raise ValueError("error_type must be 'std' or 'sem'")
+
+    lower_bound = mean_wave - error
+    upper_bound = mean_wave + error
+
+    return mean_wave, lower_bound, upper_bound, spike_subset
 
 def get_best_channels(results_dir):
     """Get channel numbers with largest template norm for each cluster."""
@@ -58,14 +116,18 @@ def get_cluster_spikes(cluster_id, results_dir, n_spikes=np.inf):
     """Get `n_spikes` random spike times assigned to `cluster_id`."""
     spike_times = np.load(results_dir / 'spike_times.npy')
     spike_clusters = np.load(results_dir / 'spike_clusters.npy')
-    spikes = spike_times[spike_clusters == cluster_id]
+    spike_idx = (spike_clusters == cluster_id).nonzero()[0]
     if n_spikes != np.inf:
-        spikes = np.random.choice(
-            spikes, min(spikes.size, n_spikes), replace=False
+        spike_subset = np.random.choice(
+            np.arange(spike_idx.size), min(spike_idx.size, n_spikes), replace=False
             )
-        spikes.sort()
+    else:
+        spike_subset = np.arange(spike_idx.size)
+    spike_idx = spike_idx[spike_subset]
+    spike_idx.sort()
+    spikes = spike_times[spike_idx]
 
-    return spikes
+    return spikes, spike_subset
 
 
 def get_spike_waveforms(spikes, results_dir, bfile=None, chan=None):
@@ -101,7 +163,7 @@ def get_spike_waveforms(spikes, results_dir, bfile=None, chan=None):
 
     waves = []
     for t in spikes:
-        tmin = t - bfile.nt0min
+        tmin = max(t - bfile.nt0min, 0)
         tmax = t + (bfile.nt - bfile.nt0min)
         w = bfile[tmin:tmax].cpu().numpy()
         if whitening_mat_inv is not None:
@@ -114,42 +176,56 @@ def get_spike_waveforms(spikes, results_dir, bfile=None, chan=None):
 
     if chan is not None:
         waves = waves[chan,:]
-    
-    bfile.close()
 
     return waves
 
 
-def cluster_templates(cluster_id, results_dir, mean=False, best=True):
-    """Get templates assigned to all spikes assigned this `cluster_id.`
+def cluster_templates(cluster_id, results_dir, mean=False, best=False, spike_subset=None):
+    """Get template-like centroid for this `cluster_id`, scaled for each spike.
     
+    Note that template here actually refers to the final clusters. The
+    template-like structure is obtained from the multi-channel waveforms of all
+    spikes assigned to the cluster. The 'template' is scaled separately for each
+    spike based on its amplitude.
+
     Parameters
     ----------
     cluster_id : int
         Cluster index to reference from `spike_clusters.npy` in the results
-        directory. Only waveforms from spikes assigned to this cluster will
-        be used.
+        directory.
     results_dir : str or Path
         Path to directory where Kilosort4 sorting results were saved.
     mean : bool; default=False
-        If True, return the mean across templates.
-    best : bool; default=True
-        If True, return single channel template(s) for this cluster_id using
+        If True, return the mean 'template' across spikes.
+    best : bool; default=False
+        If True, return single channel 'template(s)' for this cluster_id using
         the channel with the largest norm.
+    spike_subset : np.ndarray; optional.
+        Array of indices specifying which spikes to use, as returned by
+        `get_cluster_spikes` or `mean_waveform`. This helps reduce processing
+        time for large datasets if only a subset of the spikes are
+        ultimately used.
+        
+        For example, `spike_subset = [0,2,5]` would use the first, third,
+        and sixth spike (in order of increasing spike time), regardless of
+        what the actual spike times are.
 
     Return
     ------
-    mean_temps : np.ndarray
-        Array of templates with shape `(n_templates, nt, n_channels)`, or
-        with shape `(nt, n_channels)` if `mean=True`.
+    temps : np.ndarray
+        Array of templates with shape `(n_spikes, nt, n_channels)`, or
+        with shape `(nt, n_channels)` if `mean=True`. If `best=True`,
+        then `n_channels=1`.
         
     """
     results_dir = Path(results_dir)
     spike_clusters = np.load(results_dir / 'spike_clusters.npy')
-    spike_idx = spike_clusters[spike_clusters == cluster_id]
+    spike_idx = (spike_clusters == cluster_id).nonzero()[0]
+    if spike_subset is not None:
+        spike_idx = spike_idx[spike_subset]
     temps = get_templates(spike_idx, results_dir)
     if best:
-        chan = (temps**2).sum(axis=1).sum(axis=0).argmax(axis=-1)
+        chan = get_best_channel(results_dir, cluster_id)
         temps = temps[:,:,chan]
     if mean:
         return temps.mean(axis=0)
@@ -158,7 +234,7 @@ def cluster_templates(cluster_id, results_dir, mean=False, best=True):
 
 
 def get_templates(spike_idx, results_dir):
-    """Get learned templates assigned to one or more spikes.
+    """Get template-like centroids for clusters assigned to one or more spikes.
     
     Parameters
     ----------
@@ -179,9 +255,9 @@ def get_templates(spike_idx, results_dir):
     if isinstance(spike_idx, int):
         spike_idx = [spike_idx]
     templates = np.load(results_dir / 'templates.npy')
-    spike_templates = np.load(results_dir / 'spike_templates.npy')
+    # Note that spike_clusters.npy is identical to spike_templates.npy for KS4
+    spike_templates = np.load(results_dir / 'spike_clusters.npy')
     amplitudes = np.load(results_dir / 'amplitudes.npy')
-
     template_idx = spike_templates[spike_idx]
     temps = templates[template_idx, :, :]
     scaled = amplitudes[spike_idx, np.newaxis, np.newaxis] * temps
