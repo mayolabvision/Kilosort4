@@ -1,4 +1,4 @@
-name: kilosort
+name: ks4
 channels:
   - conda-forge
   - pytorch
