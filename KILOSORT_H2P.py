@@ -7,7 +7,7 @@ import os
 from kilosort import run_kilosort, DEFAULT_SETTINGS
 from kilosort.io import load_probe, save_preprocessing, load_ops
 
-def kilosort_h2p(save_path,probe_path,run_type='idgaf',probe_type='np'):
+def kilosort_h2p(save_path,probe_path,run_type='unleashed',probe_type='np',tmax=None):
 
     SAVE_PATH = Path(save_path)
     PROBE_PATH = Path(probe_path)
@@ -15,11 +15,13 @@ def kilosort_h2p(save_path,probe_path,run_type='idgaf',probe_type='np'):
     probe = load_probe(probe_path)
 
     settings = DEFAULT_SETTINGS
-    settings['probe'] = probe
-    settings['n_chan_bin'] = probe['n_chan']+1
-    settings['fs'] = 30000
+    settings['probe']      =  probe
+    settings['n_chan_bin'] =  probe['n_chan']+1
+    settings['fs']         =  30000
 
-    if probe_type == 'np':
+    if probe_type == 'np': #assuming NHP-Long probe
+        settings['dminx'] = 103
+     
         if run_type == 'unleashed': # first pass, let kilosort do its thing
             kilosort_path          =  SAVE_PATH.parent / 'kilosort4_unleashed'
             drift_correction_type  = 'none'
@@ -27,9 +29,7 @@ def kilosort_h2p(save_path,probe_path,run_type='idgaf',probe_type='np'):
             save_preprocessed_copy =  False
             stop_after_motion      =  False
 
-            settings['nblocks']              =  0
-            settings['dminx']                =  103 
-            settings['max_channel_distance'] =  103
+            settings['nblocks']    =  0
 
         elif run_type == 'detect_motion': # first pass, just detect motion 
             kilosort_path          = SAVE_PATH.parent / 'motion'
@@ -38,32 +38,27 @@ def kilosort_h2p(save_path,probe_path,run_type='idgaf',probe_type='np'):
             save_preprocessed_copy =  False
             stop_after_motion      =  True
 
-            settings['nblocks']              =  1
-            settings['dminx']                =  103 
-            settings['max_channel_distance'] =  103
+            settings['nblocks']    =  1
 
-        elif run_type == 'barebones':
-            kilosort_path          = SAVE_PATH.parent / 'kilosort4_barebones'
+        elif run_type == 'refined':
+            kilosort_path          = SAVE_PATH.parent / 'kilosort4_refined'
             drift_correction_type  = 'none'
-            with_whitening         =  False
-            save_preprocessed_copy =  True
+            with_whitening         =  True
+            save_preprocessed_copy =  False
             stop_after_motion      =  False
 
             settings['nblocks']              =  0
-            settings['Th_universal']         =  9    # 9
-            settings['Th_learned']           =  8    # 8
-            settings['dminx']                =  103 
-            settings['nearest_chans']        =  5
-            settings['max_channel_distance'] =  103 
+            settings['whitening_range']      =  12
             settings['acg_threshold']        =  0.01
-            settings['ccg_threshold']        =  0 
+            settings['ccg_threshold']        =  0.01 
             settings['duplicate_spike_ms']   =  0
+            settings['save_preprocessed_copy']   =  False
             
     settings['data_dir'] = SAVE_PATH.parent
 
-    ########## temporary ############
-    #settings['tmin'] = 0
-    #settings['tmax'] = 600
+    ########## time cutoff ############
+    if tmax is not None:
+        settings['tmax'] = tmax
 
     '''
     if probe_type == 'plex': 

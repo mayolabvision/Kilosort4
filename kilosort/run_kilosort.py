@@ -4,6 +4,7 @@ import pprint
 import logging
 import warnings
 import platform
+import sys
 logger = logging.getLogger(__name__)
 
 import numpy as np
@@ -531,7 +532,7 @@ def compute_preprocessing(ops, device, tic0=np.nan, file_object=None):
 
 def compute_drift_correction(ops, device, tic0=np.nan, progress_bar=None,
                              file_object=None, clear_cache=False, 
-                             drift_correction_type='kilosort', with_whitening=False,
+                             drift_correction_type='none', with_whitening=False,
                              stop_after_motion=True):
     """Compute drift correction parameters and save them to `ops`.
 
