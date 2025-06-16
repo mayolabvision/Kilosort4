@@ -20,7 +20,6 @@ def kilosort_h2p(save_path,probe_path,run_type='unleashed',probe_type='np',tmax=
     settings['fs']         =  30000
 
     if probe_type == 'np': #assuming NHP-Long probe
-        settings['dminx'] = 103
      
         if run_type == 'unleashed': # first pass, let kilosort do its thing
             kilosort_path          =  SAVE_PATH.parent / 'kilosort4_unleashed'
@@ -30,10 +29,30 @@ def kilosort_h2p(save_path,probe_path,run_type='unleashed',probe_type='np',tmax=
             stop_after_motion      =  False
 
             settings['nblocks']    =  0
+            settings['dminx'] = 103
 
+        elif run_type == 'og1':
+            kilosort_path          =  SAVE_PATH.parent / 'kilosort4_og1'
+            drift_correction_type  = 'kilosort'
+            with_whitening         =  True 
+            save_preprocessed_copy =  False
+            stop_after_motion      =  False
+
+            settings['nblocks']    =  1
+        
+        elif run_type == 'og2':
+            kilosort_path          =  SAVE_PATH.parent / 'kilosort4_og2'
+            drift_correction_type  = 'kilosort'
+            with_whitening         =  True 
+            save_preprocessed_copy =  False
+            stop_after_motion      =  False
+
+            settings['dminx'] = 103
+            settings['nblocks']    =  1
+           
         elif run_type == 'detect_motion': # first pass, just detect motion 
-            kilosort_path          = SAVE_PATH.parent / 'motion'
-            drift_correction_type  = 'medicine'
+            kilosort_path          =  SAVE_PATH.parent / 'motion'
+            drift_correction_type  =  'medicine'
             with_whitening         =  True 
             save_preprocessed_copy =  False
             stop_after_motion      =  True
@@ -47,12 +66,12 @@ def kilosort_h2p(save_path,probe_path,run_type='unleashed',probe_type='np',tmax=
             save_preprocessed_copy =  False
             stop_after_motion      =  False
 
-            settings['nblocks']              =  0
-            settings['whitening_range']      =  12
-            settings['acg_threshold']        =  0.01
-            settings['ccg_threshold']        =  0.01 
-            settings['duplicate_spike_ms']   =  0
-            settings['save_preprocessed_copy']   =  False
+            settings['dminx'] = 103
+            settings['nblocks']                  =  0
+            settings['whitening_range']          =  12
+            settings['acg_threshold']            =  0.01
+            settings['ccg_threshold']            =  0.01 
+            settings['duplicate_spike_ms']       =  0
             
     settings['data_dir'] = SAVE_PATH.parent
 
@@ -77,8 +96,9 @@ def kilosort_h2p(save_path,probe_path,run_type='unleashed',probe_type='np',tmax=
         shutil.rmtree(kilosort_path)
 
     ##########################################3
+    print(f'save_preprocessed_copy = {save_preprocessed_copy}')
     ops, st, clu, tF, Wall, similar_templates, is_ref, est_contam_rate, kept_spikes = run_kilosort(settings=settings, probe=probe, data_dtype='int16', results_dir=kilosort_path, save_preprocessed_copy=save_preprocessed_copy, drift_correction_type=drift_correction_type, with_whitening=with_whitening, stop_after_motion=stop_after_motion)
-    ##########################################3
+    ##########################################
   
  
     print('%%%%%%%%%%%%%%% KILOSORT DONE RUNNING %%%%%%%%%%%%%%%')

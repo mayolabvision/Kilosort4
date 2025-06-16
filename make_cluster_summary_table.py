@@ -9,7 +9,7 @@ from sklearn.metrics import mean_squared_error
 from kilosort.io import load_ops
 from kilosort.data_tools import (get_cluster_spikes, get_spike_waveforms, get_best_channels, get_best_channel)
 
-def make_cluster_summary_table(results_dir, job_id=0, n_chunks=1):
+def make_cluster_summary_table(results_dir, job_id=0, n_chunks=1, n_spikes=np.inf):
     # Initialize cluster_summary 
     start_time = time.time()
     results_dir = Path(results_dir)

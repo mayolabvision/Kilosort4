@@ -6,7 +6,7 @@
 #SBATCH --output=/ix1/pmayo/kilosort/outfiles/out_%A_%a.out
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=32
+#SBATCH --cpus-per-task=16
 #SBATCH --mail-type=fail
 #SBATCH --mail-user=knoneman@pitt.edu
 #SBATCH --time=0-04:59:59
@@ -41,7 +41,7 @@ echo "OUT_PATH = $OUT_PATH"
 ##########################
 
 echo "MAKING CLUSTER SUMMARY"
-python -c "import sys; sys.path.append('/ihome/pmayo/knoneman/Packages/Kilosort4'); from make_cluster_summary_table import make_cluster_summary_table; make_cluster_summary_table('$OUT_PATH',job_id=${SLURM_ARRAY_TASK_ID},n_chunks=${SLURM_ARRAY_TASK_COUNT})"
+python -c "import sys; sys.path.append('/ihome/pmayo/knoneman/Packages/Kilosort4'); from make_cluster_summary_table import make_cluster_summary_table; make_cluster_summary_table('$OUT_PATH', job_id=${SLURM_ARRAY_TASK_ID}, n_chunks=${SLURM_ARRAY_TASK_COUNT})"
 
 ##########################
 echo "Job ended at $(date)"
